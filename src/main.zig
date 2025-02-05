@@ -11,6 +11,16 @@ pub fn main() !void {
 
     var buf: [1024]u8 = undefined;
 
-    const len = try posix.recv(socket, &buf, 0);
-    std.debug.print("{s}\n", .{buf[0..len]});
+    // TODO: [1] trim and compare
+    const exit = "exit\r\n";
+
+    while (true) {
+        const len = try posix.recvfrom(socket, &buf, 0, null, null);
+        const input = buf[0..len];
+        // TODO: [1] trim and compare
+        if (std.mem.eql(u8, input, exit)) {
+            return;
+        }
+        std.debug.print("{s}\n", .{buf[0..len]});
+    }
 }
