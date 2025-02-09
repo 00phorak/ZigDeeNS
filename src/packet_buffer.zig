@@ -16,10 +16,6 @@ pub const BytePacketBuffer = struct {
         };
     }
 
-    fn getPos(self: BytePacketBuffer) usize {
-        return self.pos;
-    }
-
     fn step(self: BytePacketBuffer, steps: usize) !void {
         self.pos += steps;
     }
