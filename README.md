@@ -19,3 +19,22 @@ Once the app is running, you can verify it's working by sending UDP messages to 
 ```bash
 echo "should print on std" | nc -u 127.0.0.1 2048
 ```
+
+## testing
+
+For simple tests, use:
+```bash
+zig test /path/to/file.zig
+````
+
+For build testing, use:
+```bash
+zig build test --summary all
+```
+
+from build.zig. To link all the tests, I used this snippet in main.zig
+```zig
+comptime {
+  std.testing.refAllDecls(@This());
+}
+```

@@ -2,7 +2,7 @@ const std = @import("std");
 const expect = std.testing.expect;
 const net = std.net;
 const posix = std.posix;
-const packet_buffer = @import("packet_buffer.zig");
+const buf = @import("buffer.zig");
 
 pub fn main() !void {
     const addr = try net.Address.parseIp("127.0.0.1", 2048);
@@ -11,7 +11,7 @@ pub fn main() !void {
 
     try posix.bind(socket, &addr.any, addr.getOsSockLen());
 
-    var bytePacketBuffer: packet_buffer.BytePacketBuffer = packet_buffer.BytePacketBuffer.new();
+    var bytePacketBuffer: buf.BytePacketBuffer = buf.BytePacketBuffer.new();
     // TODO: [1] trim and compare
     const exit = "exit\r\n";
 
@@ -25,6 +25,11 @@ pub fn main() !void {
         }
         std.debug.print("{s}\n", .{bytePacketBuffer.buf[0..len]});
     }
+}
+
+// Test everything
+comptime {
+    std.testing.refAllDecls(@This());
 }
 
 // TODO: move Response code to separate file
