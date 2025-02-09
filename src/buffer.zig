@@ -9,12 +9,14 @@ pub const BytePacketBufferError = error{
 pub const BytePacketBuffer = struct {
     buf: [512]u8,
     pos: usize,
+    allocator: std.mem.Allocator,
 
     /// Init new BytePacketBuffer object
-    pub fn new() BytePacketBuffer {
+    pub fn new(allocator: std.mem.Allocator) BytePacketBuffer {
         return BytePacketBuffer{
             .buf = undefined,
             .pos = 0,
+            .allocator = allocator,
         };
     }
 
@@ -69,7 +71,7 @@ pub const BytePacketBuffer = struct {
     }
 
     /// TODO: describe and fix working with strings... then make public
-    fn readQName(self: BytePacketBuffer, outstr: []u8) BytePacketBufferError!void {
+    fn readQName(self: BytePacketBuffer, outstr: []u8) !void {
         var currPos = self.pos;
 
         var jumped = false;
@@ -105,11 +107,10 @@ pub const BytePacketBuffer = struct {
                     break;
                 }
 
-                // TODO: Use allocator..... damn strings in zig lmao
-                outstr = outstr ++ delim;
+                outstr = try std.mem.concat(self.allocator, u8, outstr, delim);
 
                 const strBuffer = self.getRange(currPos, @as(usize, len));
-                outstr = outstr ++ strBuffer;
+                outstr = try std.mem.concat(self.allocator, u8, outstr, strBuffer);
 
                 delim = ".";
 
@@ -124,6 +125,7 @@ pub const BytePacketBuffer = struct {
 };
 
 test "bytepacketbuffer init" {
-    const buffer: BytePacketBuffer = BytePacketBuffer.new();
+    const alloc = std.testing.allocator_instance.allocator();
+    const buffer: BytePacketBuffer = BytePacketBuffer.new(alloc);
     try expect(512 == buffer.buf.len);
 }
