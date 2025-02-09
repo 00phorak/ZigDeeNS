@@ -106,6 +106,9 @@ const DnsHeader = struct {
         self.z = (b & (1 << 6)) > 0;
         self.ra = (b & (1 << 7)) > 0;
 
-        // TODO: to be continued..
+        self.qdCount = buf.readU16();
+        self.anCount = buf.readU16();
+        self.nsCount = buf.readU16();
+        self.arCount = buf.readU16();
     }
 };
