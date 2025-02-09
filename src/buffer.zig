@@ -72,8 +72,8 @@ pub const BytePacketBuffer = struct {
         return result;
     }
 
-    /// TODO: describe and fix working with strings... then make public
-    fn readQName(self: *BytePacketBuffer, outstr: []u8) !void {
+    /// TODO: describe and fix working with strings...
+    pub fn readQName(self: *BytePacketBuffer, outstr: []u8) !void {
         var currPos = self.pos;
 
         var jumped = false;
