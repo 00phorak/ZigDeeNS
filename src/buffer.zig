@@ -10,15 +10,30 @@ pub const BytePacketBuffer = struct {
     buf: [512]u8 = undefined,
     pos: usize = 0,
     allocator: std.mem.Allocator,
-    const Self = @This();
 
     /// Init new BytePacketBuffer object
     pub fn new(allocator: std.mem.Allocator) BytePacketBuffer {
-        return Self{ .allocator = allocator };
+        return BytePacketBuffer{ .allocator = allocator };
+    }
+
+    /// Step the buffer forward by a number of steps
+    fn step(self: *BytePacketBuffer, steps: usize) BytePacketBufferError!void {
+        if (self.pos + steps >= 512) {
+            return BytePacketBufferError.EndOfBuffer;
+        }
+        self.pos += steps;
+    }
+
+    /// Set buffer position
+    fn seek(self: *BytePacketBuffer, pos: usize) BytePacketBufferError!void {
+        if (pos >= 512) {
+            return BytePacketBufferError.EndOfBuffer;
+        }
+        self.pos = pos;
     }
 
     /// Read a single byte and move position forward
-    fn read(self: *Self) BytePacketBufferError!u8 {
+    fn read(self: *BytePacketBuffer) BytePacketBufferError!u8 {
         if (self.pos >= 512) {
             return BytePacketBufferError.EndOfBuffer;
         }
@@ -28,7 +43,7 @@ pub const BytePacketBuffer = struct {
     }
 
     /// Get byte at current position
-    pub fn get(self: *Self, pos: usize) BytePacketBufferError!u8 {
+    pub fn get(self: *BytePacketBuffer, pos: usize) BytePacketBufferError!u8 {
         if (pos >= 512) {
             return BytePacketBufferError.EndOfBuffer;
         }
@@ -36,7 +51,7 @@ pub const BytePacketBuffer = struct {
     }
 
     /// Read a range of bytes, does not modify position
-    pub fn getRange(self: *Self, start: usize, len: usize) BytePacketBufferError!u8 {
+    pub fn getRange(self: *BytePacketBuffer, start: usize, len: usize) BytePacketBufferError!u8 {
         if (start + len >= 512) {
             return BytePacketBufferError.EndOfBuffer;
         }
@@ -44,21 +59,21 @@ pub const BytePacketBuffer = struct {
     }
 
     /// Read two bytes, step two steps forward
-    pub fn readU16(self: *Self) u16 {
-        const result = (@as(u16, self.read()) << 8) | (@as(u16, self.read()));
+    pub fn readU16(self: *BytePacketBuffer) BytePacketBufferError!u16 {
+        const result = try (@as(u16, self.read()) << 8) | (@as(u16, self.read()));
 
         return result;
     }
 
     /// Read four bytes, step four steps forward
-    pub fn readU32(self: *Self) u32 {
-        const result = (@as(u32, self.read()) << 24) | (@as(u32, self.read()) << 16) | (@as(u32, self.read()) << 8) | (@as(u32, self.read()) << 0);
+    pub fn readU32(self: *BytePacketBuffer) BytePacketBufferError!u32 {
+        const result = try (@as(u32, self.read()) << 24) | (@as(u32, self.read()) << 16) | (@as(u32, self.read()) << 8) | (@as(u32, self.read()) << 0);
 
         return result;
     }
 
     /// TODO: describe and fix working with strings... then make public
-    fn readQName(self: *Self, outstr: []u8) !void {
+    fn readQName(self: *BytePacketBuffer, outstr: []u8) !void {
         var currPos = self.pos;
 
         var jumped = false;
@@ -122,11 +137,11 @@ test "bytepacketbuffer modifying buffer" {
     const alloc = std.testing.allocator_instance.allocator();
     var buffer: BytePacketBuffer = BytePacketBuffer.new(alloc);
     try expect(0 == buffer.pos);
-    buffer.pos += 10;
+    try buffer.step(10);
     try expect(10 == buffer.pos);
-    buffer.pos += 10;
+    try buffer.step(10);
     try expect(20 == buffer.pos);
-    buffer.pos = 5;
+    try buffer.seek(5);
     try expect(5 == buffer.pos);
     const readVal = try buffer.read();
     try expect(0 == readVal);
