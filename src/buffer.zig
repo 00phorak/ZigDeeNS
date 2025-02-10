@@ -73,8 +73,9 @@ pub const BytePacketBuffer = struct {
     }
 
     /// TODO: describe and fix working with strings...
-    pub fn readQName(self: *BytePacketBuffer, outstr: []u8) !void {
+    pub fn readQName(self: *BytePacketBuffer) ![]u8 {
         var currPos = self.pos;
+        var result: []u8 = undefined;
 
         var jumped = false;
         const maxJumps = 5;
@@ -109,10 +110,10 @@ pub const BytePacketBuffer = struct {
                     break;
                 }
 
-                outstr = try std.mem.concat(self.allocator, u8, outstr, delim);
+                result = try std.mem.concat(self.allocator, u8, result, delim);
 
                 const strBuffer = self.getRange(currPos, @as(usize, len));
-                outstr = try std.mem.concat(self.allocator, u8, outstr, strBuffer);
+                result = try std.mem.concat(self.allocator, u8, result, strBuffer);
 
                 delim = ".";
 
