@@ -1,7 +1,8 @@
 const std = @import("std");
+const expect = std.testing.expect;
+
 const buf = @import("buffer.zig");
 const qt = @import("query-type.zig");
-const expect = std.testing.expect;
 
 const DnsRecordTag = enum {
     UNKNOWN,
@@ -33,33 +34,46 @@ const DnsRecord = union(DnsRecordTag) {
         switch (qtype) {
             .A => {
                 const rawAddr = buffer.readU32();
-                // TODO: get IP from u32 bytes
-                // maybe concat to string and parse? idk yet, need to check docu and impl of ipv4
                 // ((rawAddr >> 24) & 0xFF) -> 127
                 // ((rawAddr >> 16) & 0xFF) -> 0
                 // ((rawAddr >> 8) & 0xFF) -> 0
                 // ((rawAddr >> 0) & 0xFF) -> 1
-                const addr = rawAddr >> 24;
+                const parsedAddr: [4]u8 = .{
+                    ((rawAddr >> 0) & 0xFF),
+                    ((rawAddr >> 8) & 0xFF),
+                    ((rawAddr >> 16) & 0xFF),
+                    ((rawAddr >> 24) & 0xFF),
+                };
+                const addr = std.net.Ip4Address.init(parsedAddr, 80);
 
-                return DnsRecord{
+                return DnsRecord{.A{
                     .domain = domain,
                     .addr = addr,
                     .ttl = ttl,
-                };
+                }};
             },
             .UNKNOWN => {
                 buffer.step(@as(usize, dataLen));
-                return DnsRecord{
+                return DnsRecord{.UNKNOWN{
                     .domain = domain,
                     .qtype = qtype,
                     .dataLen = dataLen,
                     .ttl = ttl,
-                };
+                }};
             },
         }
     }
 };
 
 test "dnsrecord ipv4address parsing" {
-    try expect(true);
+    // 127.0.0.1
+    const rawAddr: u32 = 0b01111111000000000000000000000001;
+    const parsedAddr: [4]u8 = .{
+        ((rawAddr >> 0) & 0xFF),
+        ((rawAddr >> 8) & 0xFF),
+        ((rawAddr >> 16) & 0xFF),
+        ((rawAddr >> 24) & 0xFF),
+    };
+    const addr = std.net.Ip4Address.init(parsedAddr, 80);
+    try expect(addr.sa.addr == rawAddr);
 }
