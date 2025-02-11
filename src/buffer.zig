@@ -17,7 +17,7 @@ pub const BytePacketBuffer = struct {
     }
 
     /// Step the buffer forward by a number of steps
-    fn step(self: *BytePacketBuffer, steps: usize) BytePacketBufferError!void {
+    pub fn step(self: *BytePacketBuffer, steps: usize) BytePacketBufferError!void {
         if (self.pos + steps >= 512) {
             return BytePacketBufferError.EndOfBuffer;
         }
@@ -51,7 +51,7 @@ pub const BytePacketBuffer = struct {
     }
 
     /// Read a range of bytes, does not modify position
-    pub fn getRange(self: *BytePacketBuffer, start: usize, len: usize) BytePacketBufferError!u8 {
+    pub fn getRange(self: *BytePacketBuffer, start: usize, len: usize) BytePacketBufferError![]u8 {
         if (start + len >= 512) {
             return BytePacketBufferError.EndOfBuffer;
         }
@@ -60,14 +60,37 @@ pub const BytePacketBuffer = struct {
 
     /// Read two bytes, step two steps forward
     pub fn readU16(self: *BytePacketBuffer) BytePacketBufferError!u16 {
-        const result = try (@as(u16, self.read()) << 8) | (@as(u16, self.read()));
+        const bytes = self.read() catch |err| return {
+            std.log.err("self.pos: {d}\n", .{self.pos});
+            // std.log.err("self.buf: {}\n", .{self.buf});
+            return err;
+        };
+
+        const first: u16 = @intCast(bytes);
+        const secondBytes = self.read() catch |err| return {
+            std.log.err("self.pos: {d}\n", .{self.pos});
+            // std.log.err("self.buf: {}\n", .{self.buf});
+            return err;
+        };
+        const fRes: u16 = first << 8;
+        const sRes: u16 = @intCast(secondBytes);
+        // const result: u16 = try @as(u16, @intCast(self.read()) << 8) | (@intCast(self.read()));
+        const result = fRes | sRes;
 
         return result;
     }
 
     /// Read four bytes, step four steps forward
     pub fn readU32(self: *BytePacketBuffer) BytePacketBufferError!u32 {
-        const result = try (@as(u32, self.read()) << 24) | (@as(u32, self.read()) << 16) | (@as(u32, self.read()) << 8) | (@as(u32, self.read()) << 0);
+        const tA: u32 = @intCast(try self.read());
+        const first = tA << 24;
+        const tB: u32 = @intCast(try self.read());
+        const second = tB << 16;
+        const tC: u32 = @intCast(try self.read());
+        const third = tC << 8;
+        const tD: u32 = @intCast(try self.read());
+        const fourth = tD << 0;
+        const result = first | second | third | fourth;
 
         return result;
     }
@@ -79,25 +102,27 @@ pub const BytePacketBuffer = struct {
 
         var jumped = false;
         const maxJumps = 5;
-        var currJumps = 0;
+        var currJumps: u8 = 0;
 
-        var delim = "";
+        var delim: *const [1:0]u8 = undefined;
+        delim = delim ++ "";
 
         while (true) {
             if (currJumps > maxJumps) {
                 return BytePacketBufferError.JumpsExceeded;
             }
 
-            const len = self.get(currPos);
+            const len = try self.get(currPos);
 
             if ((len & 0xC0) == 0xC0) {
                 if (!jumped) {
-                    self.seek(currPos + 2);
+                    try self.seek(currPos + 2);
                 }
 
-                const b2 = @as(u16, self.get(currPos + 1));
+                const b2: u16 = @intCast(try self.get(currPos + 1));
 
-                const offset = ((@as(u16, len) ^ 0xc0) << 8) | b2;
+                const tmpLen: u16 = @intCast(len);
+                const offset: u16 = ((tmpLen ^ 0xc0) << 8) | b2;
                 currPos = @as(usize, offset);
 
                 jumped = true;
@@ -109,11 +134,13 @@ pub const BytePacketBuffer = struct {
                 if (len == 0) {
                     break;
                 }
+                const concat = &.{ result, delim };
+                result = try std.mem.concat(self.allocator, u8, concat);
 
-                result = try std.mem.concat(self.allocator, u8, result, delim);
+                const strBuffer = try self.getRange(currPos, @as(usize, len));
 
-                const strBuffer = self.getRange(currPos, @as(usize, len));
-                result = try std.mem.concat(self.allocator, u8, result, strBuffer);
+                const cc = &.{ result, strBuffer };
+                result = try std.mem.concat(self.allocator, u8, cc);
 
                 delim = ".";
 
@@ -122,8 +149,9 @@ pub const BytePacketBuffer = struct {
         }
 
         if (!jumped) {
-            self.seek(currPos);
+            try self.seek(currPos);
         }
+        return result;
     }
 };
 

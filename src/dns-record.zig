@@ -9,7 +9,7 @@ const DnsRecordTag = enum {
     A,
 };
 
-const DnsRecord = union(DnsRecordTag) {
+pub const DnsRecord = union(DnsRecordTag) {
     UNKNOWN: struct {
         domain: []u8,
         qtype: u16,
@@ -22,44 +22,44 @@ const DnsRecord = union(DnsRecordTag) {
         ttl: u32,
     },
 
-    pub fn read(buffer: buf.BytePacketBuffer) DnsRecord {
-        const domain = buffer.readQName();
+    pub fn read(buffer: *buf.BytePacketBuffer) !DnsRecord {
+        const domain = try buffer.readQName();
 
-        const qtype_num = buffer.readU16();
-        const qtype = qt.QueryType.fromNum(qtype_num);
-        _ = buffer.readU16();
-        const ttl = buffer.readU32();
-        const dataLen = buffer.readU16();
+        const qtypeNum = try buffer.readU16();
+        const qtype = qt.QueryType.fromNum(qtypeNum);
+        _ = try buffer.readU16();
+        const ttl = try buffer.readU32();
+        const dataLen = try buffer.readU16();
 
         switch (qtype) {
             .A => {
-                const rawAddr = buffer.readU32();
+                const rawAddr = try buffer.readU32();
                 // ((rawAddr >> 24) & 0xFF) -> 127
                 // ((rawAddr >> 16) & 0xFF) -> 0
                 // ((rawAddr >> 8) & 0xFF) -> 0
                 // ((rawAddr >> 0) & 0xFF) -> 1
                 const parsedAddr: [4]u8 = .{
-                    ((rawAddr >> 0) & 0xFF),
-                    ((rawAddr >> 8) & 0xFF),
-                    ((rawAddr >> 16) & 0xFF),
-                    ((rawAddr >> 24) & 0xFF),
+                    @intCast((rawAddr >> 0) & 0xFF),
+                    @intCast((rawAddr >> 8) & 0xFF),
+                    @intCast((rawAddr >> 16) & 0xFF),
+                    @intCast((rawAddr >> 24) & 0xFF),
                 };
                 const addr = std.net.Ip4Address.init(parsedAddr, 80);
 
-                return DnsRecord{.A{
+                return DnsRecord{ .A = .{
                     .domain = domain,
                     .addr = addr,
                     .ttl = ttl,
-                }};
+                } };
             },
             .UNKNOWN => {
-                buffer.step(@as(usize, dataLen));
-                return DnsRecord{.UNKNOWN{
+                try buffer.step(@as(usize, dataLen));
+                return DnsRecord{ .UNKNOWN = .{
                     .domain = domain,
-                    .qtype = qtype,
+                    .qtype = qtypeNum,
                     .dataLen = dataLen,
                     .ttl = ttl,
-                }};
+                } };
             },
         }
     }

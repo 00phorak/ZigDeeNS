@@ -6,7 +6,7 @@ const QueryTypeTag = enum {
     A,
 };
 
-const QueryType = union(QueryTypeTag) {
+pub const QueryType = union(QueryTypeTag) {
     UNKNOWN: u16,
     A: u1,
 

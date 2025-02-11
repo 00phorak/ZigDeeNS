@@ -38,3 +38,15 @@ comptime {
   std.testing.refAllDecls(@This());
 }
 ```
+### generate testing packets
+```bash
+nc -u -l 1053 > query_packet
+# in different shell
+dig +retry=0 -p 1053 @127.0.0.1 +noedns google.com
+# back to this, once query packet is generated
+nc -u 8.8.8.8 53 < query_packet > response_packet
+# verify contents with hexdump
+hexdump -C query_packet
+hexdump -C response_packet
+
+```

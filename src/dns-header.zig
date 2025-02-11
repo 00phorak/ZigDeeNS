@@ -2,7 +2,7 @@ const std = @import("std");
 const rescode = @import("rescode.zig");
 const buffer = @import("buffer.zig");
 
-const DnsHeader = struct {
+pub const DnsHeader = struct {
     /// ID
     /// identifier
     /// 16 bits
@@ -78,16 +78,16 @@ const DnsHeader = struct {
     /// 16 bits
     arCount: u16 = 0,
 
-    pub fn read(self: DnsHeader, buf: buffer.BytePacketBuffer) !void {
+    pub fn read(self: *DnsHeader, buf: *buffer.BytePacketBuffer) !void {
         // read first 16 bits = ID
-        self.id = buf.readU16();
+        self.id = try buf.readU16();
 
         // next 16 bits are flags
-        const flags = buf.readU16();
+        const flags = try buf.readU16();
         // shift left to get first 8 bits
-        const a = @as(u8, flags >> 8);
+        const a: u8 = @intCast(flags >> 8);
         // compare with 'ones' to get the second part of bits from the u16
-        const b = @as(u8, flags & 0xFF);
+        const b: u8 = @intCast(flags & 0xFF);
         // get each flag one by one
         // get '1', shift it to the position of the flag and the compare with the value in 'a'
         // then compare with 0
@@ -95,7 +95,7 @@ const DnsHeader = struct {
         self.tc = (a & (1 << 1)) > 0;
         self.aa = (a & (1 << 2)) > 0;
         // opcode is 4 bits at position 3, thats why shift by 3 and 'and' with 0x0F
-        self.opcode = (a >> 3) & 0x0F;
+        self.opcode = @intCast((a >> 3) & 0x0F);
         // then skip the 4 bits from the opcode
         self.qr = (a & (1 << 7)) > 0;
 
@@ -103,12 +103,12 @@ const DnsHeader = struct {
         self.rcode = @enumFromInt(b & 0x0f);
         self.cd = (b & (1 << 4)) > 0;
         self.ad = (b & (1 << 5)) > 0;
-        self.z = (b & (1 << 6)) > 0;
+        self.z = @intCast(b & (1 << 6));
         self.ra = (b & (1 << 7)) > 0;
 
-        self.qdCount = buf.readU16();
-        self.anCount = buf.readU16();
-        self.nsCount = buf.readU16();
-        self.arCount = buf.readU16();
+        self.qdCount = try buf.readU16();
+        self.anCount = try buf.readU16();
+        self.nsCount = try buf.readU16();
+        self.arCount = try buf.readU16();
     }
 };

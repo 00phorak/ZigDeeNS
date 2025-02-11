@@ -1,7 +1,7 @@
 const std = @import("std");
 const expect = std.testing.expect;
 
-const ResponseCode = enum(u4) {
+pub const ResponseCode = enum(u4) {
     NO_ERROR,
     FORMAT_ERROR,
     SERVER_FAILURE,
