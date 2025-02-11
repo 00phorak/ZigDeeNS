@@ -98,7 +98,7 @@ pub const BytePacketBuffer = struct {
     /// TODO: describe and fix working with strings...
     pub fn readQName(self: *BytePacketBuffer) ![]u8 {
         var currPos = self.pos;
-        var result: []u8 = undefined;
+        var result = std.ArrayList(u8).init(self.allocator);
 
         var jumped = false;
         const maxJumps = 5;
@@ -133,13 +133,12 @@ pub const BytePacketBuffer = struct {
                 if (len == 0) {
                     break;
                 }
-                const concat = &.{ result, delim };
-                result = try std.mem.concat(self.allocator, u8, concat);
-
+                try result.appendSlice(delim);
                 const strBuffer = try self.getRange(currPos, @as(usize, len));
+                try result.appendSlice(strBuffer);
 
-                const cc = &.{ result, strBuffer };
-                result = try std.mem.concat(self.allocator, u8, cc);
+                // const cc = &.{ result, strBuffer };
+                // result = try std.mem.concat(self.allocator, u8, cc);
 
                 delim = ".";
 
@@ -150,7 +149,7 @@ pub const BytePacketBuffer = struct {
         if (!jumped) {
             try self.seek(currPos);
         }
-        return result;
+        return result.toOwnedSlice();
     }
 };
 
