@@ -104,8 +104,7 @@ pub const BytePacketBuffer = struct {
         const maxJumps = 5;
         var currJumps: u8 = 0;
 
-        var delim: *const [1:0]u8 = undefined;
-        delim = delim ++ "";
+        var delim: []const u8 = "";
 
         while (true) {
             if (currJumps > maxJumps) {
