@@ -5,7 +5,7 @@ const a = @import("dns-record.zig");
 const buf = @import("buffer.zig");
 const qt = @import("query-type.zig");
 
-const DnsPacket = struct {
+pub const DnsPacket = struct {
     header: header.DnsHeader = header.DnsHeader{},
     questions: []q.DnsQuestion = undefined,
     answers: []a.DnsRecord = undefined,
@@ -14,17 +14,20 @@ const DnsPacket = struct {
 
     pub fn fromBuffer(buffer: *buf.BytePacketBuffer) !DnsPacket {
         var questions: std.ArrayList(q.DnsQuestion) = std.ArrayList(q.DnsQuestion).init(buffer.allocator);
+        errdefer questions.deinit();
         var answers: std.ArrayList(a.DnsRecord) = std.ArrayList(a.DnsRecord).init(buffer.allocator);
+        errdefer answers.deinit();
         var authorities: std.ArrayList(a.DnsRecord) = std.ArrayList(a.DnsRecord).init(buffer.allocator);
+        errdefer authorities.deinit();
         var resources: std.ArrayList(a.DnsRecord) = std.ArrayList(a.DnsRecord).init(buffer.allocator);
-        var result: DnsPacket = DnsPacket{
-            .header = header.DnsHeader{},
-        };
+        errdefer resources.deinit();
+        var result: DnsPacket = DnsPacket{};
 
         try result.header.read(buffer);
 
         for (0..result.header.qdCount) |_| {
             var question = q.DnsQuestion.new("", qt.QueryType.fromNum(0));
+
             try question.read(buffer);
 
             try questions.append(question);

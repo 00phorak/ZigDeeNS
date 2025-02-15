@@ -51,30 +51,31 @@ pub const BytePacketBuffer = struct {
     }
 
     /// Read a range of bytes, does not modify position
-    pub fn getRange(self: *BytePacketBuffer, start: usize, len: usize) BytePacketBufferError![]u8 {
+    pub fn getRange(self: *BytePacketBuffer, start: usize, len: usize) ![]u8 {
         if (start + len >= 512) {
             return BytePacketBufferError.EndOfBuffer;
         }
-        return self.buf[start..(start + len)];
+
+        var result = std.ArrayList(u8).init(self.allocator);
+        errdefer result.deinit();
+        try result.appendSlice(self.buf[start..(start + len)]);
+        return result.toOwnedSlice();
     }
 
     /// Read two bytes, step two steps forward
     pub fn readU16(self: *BytePacketBuffer) BytePacketBufferError!u16 {
         const bytes = self.read() catch |err| return {
             std.log.err("self.pos: {d}\n", .{self.pos});
-            // std.log.err("self.buf: {}\n", .{self.buf});
             return err;
         };
 
         const first: u16 = @intCast(bytes);
         const secondBytes = self.read() catch |err| return {
             std.log.err("self.pos: {d}\n", .{self.pos});
-            // std.log.err("self.buf: {}\n", .{self.buf});
             return err;
         };
         const fRes: u16 = first << 8;
         const sRes: u16 = @intCast(secondBytes);
-        // const result: u16 = try @as(u16, @intCast(self.read()) << 8) | (@intCast(self.read()));
         const result = fRes | sRes;
 
         return result;
@@ -99,6 +100,13 @@ pub const BytePacketBuffer = struct {
     pub fn readQName(self: *BytePacketBuffer) ![]u8 {
         var currPos = self.pos;
         var result = std.ArrayList(u8).init(self.allocator);
+        errdefer result.deinit();
+        // errdefer {
+        //     for (result.items) |item| {
+        //         self.allocator.free(item);
+        //     }
+        //     result.deinit();
+        // }
 
         var jumped = false;
         const maxJumps = 5;
@@ -133,12 +141,10 @@ pub const BytePacketBuffer = struct {
                 if (len == 0) {
                     break;
                 }
+
                 try result.appendSlice(delim);
                 const strBuffer = try self.getRange(currPos, @as(usize, len));
                 try result.appendSlice(strBuffer);
-
-                // const cc = &.{ result, strBuffer };
-                // result = try std.mem.concat(self.allocator, u8, cc);
 
                 delim = ".";
 
