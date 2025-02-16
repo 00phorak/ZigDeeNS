@@ -46,7 +46,7 @@ pub fn main() !void {
 
     var packet = try dp.DnsPacket.fromBuffer(&buffer);
     defer packet.deinit(gpa);
-    std.log.info("{d}", .{packet.header.id});
+    try std.json.stringify(&packet, .{}, std.io.getStdOut().writer());
 }
 
 // Test everything
