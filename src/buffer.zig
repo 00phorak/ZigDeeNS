@@ -56,10 +56,13 @@ pub const BytePacketBuffer = struct {
             return BytePacketBufferError.EndOfBuffer;
         }
 
-        var result = std.ArrayList(u8).init(self.allocator);
-        errdefer result.deinit();
-        try result.appendSlice(self.buf[start..(start + len)]);
-        return result.toOwnedSlice();
+        const res = try self.allocator.alloc(u8, len);
+        @memcpy(res, self.buf[start..(start + len)]);
+
+        // var result = std.ArrayList(u8).init(self.allocator);
+        // try result.appendSlice(self.buf[start..(start + len)]);
+        // return result.toOwnedSlice();
+        return res;
     }
 
     /// Read two bytes, step two steps forward
@@ -144,6 +147,7 @@ pub const BytePacketBuffer = struct {
 
                 try result.appendSlice(delim);
                 const strBuffer = try self.getRange(currPos, @as(usize, len));
+                errdefer self.allocator.free(strBuffer);
                 try result.appendSlice(strBuffer);
 
                 delim = ".";
