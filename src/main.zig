@@ -38,12 +38,14 @@ pub fn main() !void {
     // }
 
     var file = try std.fs.cwd().openFile("src/response_packet", .{});
+    defer file.close();
 
     var buffer = buf.BytePacketBuffer.new(gpa);
 
     _ = try file.read(&buffer.buf);
 
-    const packet = try dp.DnsPacket.fromBuffer(&buffer);
+    var packet = try dp.DnsPacket.fromBuffer(&buffer);
+    defer packet.deinit(gpa);
     std.log.info("{d}", .{packet.header.id});
 }
 
