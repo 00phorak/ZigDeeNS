@@ -29,22 +29,33 @@ pub const DnsPacket = struct {
             var question = q.DnsQuestion.new("", qt.QueryType.fromNum(0));
 
             try question.read(buffer);
-
             try questions.append(question);
         }
 
         for (0..result.header.anCount) |_| {
             const record = try a.DnsRecord.read(buffer);
+            errdefer switch (record) {
+                .A => |a_record| buffer.allocator.free(a_record.domain),
+                .UNKNOWN => |unknown_record| buffer.allocator.free(unknown_record.domain),
+            };
             try answers.append(record);
         }
 
         for (0..result.header.nsCount) |_| {
             const record = try a.DnsRecord.read(buffer);
+            errdefer switch (record) {
+                .A => |a_record| buffer.allocator.free(a_record.domain),
+                .UNKNOWN => |unknown_record| buffer.allocator.free(unknown_record.domain),
+            };
             try authorities.append(record);
         }
 
         for (0..result.header.arCount) |_| {
             const record = try a.DnsRecord.read(buffer);
+            errdefer switch (record) {
+                .A => |a_record| buffer.allocator.free(a_record.domain),
+                .UNKNOWN => |unknown_record| buffer.allocator.free(unknown_record.domain),
+            };
             try resources.append(record);
         }
 
@@ -53,6 +64,41 @@ pub const DnsPacket = struct {
         result.authorities = try authorities.toOwnedSlice();
         result.resources = try resources.toOwnedSlice();
         return result;
+    }
+
+    pub fn deinit(self: *DnsPacket, allocator: std.mem.Allocator) void {
+        // Clean up questions
+        for (self.questions) |*question| {
+            question.deinit(allocator);
+        }
+        allocator.free(self.questions);
+
+        // Clean up answers
+        for (self.answers) |answer| {
+            switch (answer) {
+                .A => |a_record| allocator.free(a_record.domain),
+                .UNKNOWN => |unknown_record| allocator.free(unknown_record.domain),
+            }
+        }
+        allocator.free(self.answers);
+
+        // Clean up authorities
+        for (self.authorities) |authority| {
+            switch (authority) {
+                .A => |a_record| allocator.free(a_record.domain),
+                .UNKNOWN => |unknown_record| allocator.free(unknown_record.domain),
+            }
+        }
+        allocator.free(self.authorities);
+
+        // Clean up resources
+        for (self.resources) |resource| {
+            switch (resource) {
+                .A => |a_record| allocator.free(a_record.domain),
+                .UNKNOWN => |unknown_record| allocator.free(unknown_record.domain),
+            }
+        }
+        allocator.free(self.resources);
     }
 };
 
@@ -65,6 +111,7 @@ test "read dns-packet from file" {
 
     _ = try file.read(&buffer.buf);
 
-    _ = try DnsPacket.fromBuffer(&buffer);
+    var packet = try DnsPacket.fromBuffer(&buffer);
+    defer packet.deinit(alloc);
     // std.log.warn("{s}", .{packet});
 }

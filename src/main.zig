@@ -61,6 +61,6 @@ test "test reading packet" {
 
     _ = try file.read(&buffer.buf);
 
-    const packet = try dp.DnsPacket.fromBuffer(&buffer);
-    std.log.info("{d}", .{packet.header.id});
+    var packet = try dp.DnsPacket.fromBuffer(&buffer);
+    defer packet.deinit(allocator);
 }

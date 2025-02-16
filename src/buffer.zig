@@ -104,12 +104,6 @@ pub const BytePacketBuffer = struct {
         var currPos = self.pos;
         var result = std.ArrayList(u8).init(self.allocator);
         errdefer result.deinit();
-        // errdefer {
-        //     for (result.items) |item| {
-        //         self.allocator.free(item);
-        //     }
-        //     result.deinit();
-        // }
 
         var jumped = false;
         const maxJumps = 5;
@@ -147,7 +141,7 @@ pub const BytePacketBuffer = struct {
 
                 try result.appendSlice(delim);
                 const strBuffer = try self.getRange(currPos, @as(usize, len));
-                errdefer self.allocator.free(strBuffer);
+                defer self.allocator.free(strBuffer);
                 try result.appendSlice(strBuffer);
 
                 delim = ".";

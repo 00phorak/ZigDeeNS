@@ -14,10 +14,14 @@ pub const DnsQuestion = struct {
     }
 
     pub fn read(self: *DnsQuestion, buffer: *buf.BytePacketBuffer) !void {
-        _ = try buffer.readQName();
+        self.name = try buffer.readQName();
         const num = try buffer.readU16();
         self.qtype = qt.QueryType.fromNum(num);
         // fill in class and so on later
         _ = try buffer.readU16();
+    }
+
+    pub fn deinit(self: *DnsQuestion, allocator: std.mem.Allocator) void {
+        allocator.free(self.name);
     }
 };
