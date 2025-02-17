@@ -53,16 +53,3 @@ pub fn main() !void {
 comptime {
     std.testing.refAllDecls(@This());
 }
-
-test "test reading packet" {
-    var file = try std.fs.cwd().openFile("src/response_packet", .{});
-    defer file.close();
-
-    const allocator = std.testing.allocator;
-    var buffer = buf.BytePacketBuffer.new(allocator);
-
-    _ = try file.read(&buffer.buf);
-
-    var packet = try dp.DnsPacket.fromBuffer(&buffer);
-    defer packet.deinit(allocator);
-}

@@ -102,16 +102,15 @@ pub const DnsPacket = struct {
     }
 };
 
-test "read dns-packet from file" {
-    const alloc = std.testing.allocator_instance.allocator();
-
+test "test parsing dns-packet" {
     var file = try std.fs.cwd().openFile("src/response_packet", .{});
+    defer file.close();
 
-    var buffer = buf.BytePacketBuffer.new(alloc);
+    const allocator = std.testing.allocator;
+    var buffer = buf.BytePacketBuffer.new(allocator);
 
     _ = try file.read(&buffer.buf);
 
     var packet = try DnsPacket.fromBuffer(&buffer);
-    defer packet.deinit(alloc);
-    // std.log.warn("{s}", .{packet});
+    defer packet.deinit(allocator);
 }
