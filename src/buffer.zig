@@ -42,6 +42,29 @@ pub const BytePacketBuffer = struct {
         return result;
     }
 
+    /// Write single byte (u8) to a buffer
+    pub fn write(self: *BytePacketBuffer, val: u8) BytePacketBufferError!void {
+        if (self.pos >= 512) {
+            return BytePacketBufferError.EndOfBuffer;
+        }
+        self.buf[self.pos] = val;
+        self.pos += 1;
+    }
+
+    /// Write two bytes (u16) to a buffer
+    pub fn writeU16(self: *BytePacketBuffer, val: u16) BytePacketBufferError!void {
+        self.write(@as(u8, @intCast(val >> 8)) & 0xFF);
+        self.write(@as(u8, @intCast(val >> 0)) & 0xFF);
+    }
+
+    /// Write two bytes (u16) to a buffer
+    pub fn writeU32(self: *BytePacketBuffer, val: u32) BytePacketBufferError!void {
+        self.write(@as(u8, @intCast(val >> 24)) & 0xFF);
+        self.write(@as(u8, @intCast(val >> 16)) & 0xFF);
+        self.write(@as(u8, @intCast(val >> 8)) & 0xFF);
+        self.write(@as(u8, @intCast(val >> 0)) & 0xFF);
+    }
+
     /// Get byte at current position
     pub fn get(self: *BytePacketBuffer, pos: usize) BytePacketBufferError!u8 {
         if (pos >= 512) {
@@ -72,34 +95,29 @@ pub const BytePacketBuffer = struct {
             return err;
         };
 
-        const first: u16 = @intCast(bytes);
+        const first: u16 = @as(u16, @intCast(bytes)) << 8;
         const secondBytes = self.read() catch |err| return {
             std.log.err("self.pos: {d}\n", .{self.pos});
             return err;
         };
-        const fRes: u16 = first << 8;
-        const sRes: u16 = @intCast(secondBytes);
-        const result = fRes | sRes;
+        const second: u16 = @intCast(secondBytes);
+        const result: u16 = first | second;
 
         return result;
     }
 
     /// Read four bytes, step four steps forward
     pub fn readU32(self: *BytePacketBuffer) BytePacketBufferError!u32 {
-        const tA: u32 = @intCast(try self.read());
-        const first = tA << 24;
-        const tB: u32 = @intCast(try self.read());
-        const second = tB << 16;
-        const tC: u32 = @intCast(try self.read());
-        const third = tC << 8;
-        const tD: u32 = @intCast(try self.read());
-        const fourth = tD << 0;
-        const result = first | second | third | fourth;
+        const first: u32 = @as(u32, @intCast(try self.read())) << 24;
+        const second: u32 = @as(u32, @intCast(try self.read())) << 16;
+        const third: u32 = @as(u32, @intCast(try self.read())) << 8;
+        const fourth: u32 = @as(u32, @intCast(try self.read())) << 0;
+
+        const result: u32 = first | second | third | fourth;
 
         return result;
     }
 
-    /// TODO: describe and fix working with strings...
     pub fn readQName(self: *BytePacketBuffer) ![]u8 {
         var currPos = self.pos;
         var result = std.ArrayList(u8).init(self.allocator);
@@ -125,9 +143,7 @@ pub const BytePacketBuffer = struct {
 
                 const b2: u16 = @intCast(try self.get(currPos + 1));
 
-                const tmpLen: u16 = @intCast(len);
-                const offset: u16 = ((tmpLen ^ 0xc0) << 8) | b2;
-                currPos = @as(usize, offset);
+                currPos = @as(usize, ((@as(u16, @intCast(len)) ^ 0xc0) << 8) | b2);
 
                 jumped = true;
                 currJumps += 1;
